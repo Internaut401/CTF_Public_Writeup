@@ -84,6 +84,7 @@ syscall table: https://chromium.googlesource.com/chromiumos/docs/+/master/consta
 To patch the instruction i used ghidra, and to apply the patch i've used a python ghidra plugin:
 https://github.com/schlafwandler/ghidra_SavePatch
 
+Analyzing the program, we can notice that one of the dtors actually map some rwx page in memory, then unpack some bytes geenrating a shellcode. One solution could be copy, the unpacker function and extract the shellcode. I choose to analyze the unpacked shellcode through dynamic analysis, so i basically break with GDB once the the shellcode interact with the user asking for a input. 
 With dynamic analysis we can see that the program cycles through all bytes of our input until it encounters a "newline" character. At each cycle it adds the value of the byte in the rbx register which keeps the total sum:
 ```asm
    0x7ffff7ffa0d9    mov    al, byte ptr [rsp + rcx]
