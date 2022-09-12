@@ -30,7 +30,7 @@ We are asked for a second key. This time the program uses the second key in comb
 ![img/5.png](img/5.png)
 
 So essentially for each byte:<br>
-a = ke1 + key2<br>
+a = key1 + key2<br>
 a = a >> 3 bit<br>
 a *= 4<br>
 sum += a<br>
