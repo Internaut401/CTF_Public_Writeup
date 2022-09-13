@@ -7,6 +7,7 @@ The challenge is a "multi stage" challenge where we are asked for a couple of in
 ## Credential
 The first step is the credential. We are asked for username and password. These are checked by a function that return 2 if the input string is equal to another harcoded one. If both password and username are correct we get the sum of 4 and pass the check.<br> 
 ![img/3.png](img/3.png)
+<br>
 Hardcoded credential are:
 - Username: `admin`
 - Password: `password` 
